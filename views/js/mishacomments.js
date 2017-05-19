@@ -4,6 +4,6 @@ $(document).ready(function() {
    }
 
 
-    $(".grade_disabled").rating({displayOnly: true});
-   $("#grade_active").rating({min:0, max:5, step:1, size:'sm'});
+    $(".grade").rating({displayOnly: true, size: 'sm'});
+   $("#grade_field").rating({min:0, max:5, step:1, size:'sm'});
 });

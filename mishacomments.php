@@ -23,6 +23,8 @@ class MishaComments extends ModuleCore
 
         if (!parent::install() ||
             !$this->registerHook('displayProductTabContent') ||
+            !$this->registerHook('displayBackOfficeHeader') ||
+            !$this->registerHook('ModuleRoutes') ||
             !$this->loadSQLFile($sql_file)
         ) {
             return false;
@@ -96,10 +98,16 @@ class MishaComments extends ModuleCore
     {
         if (Tools::isSubmit('mishacomments_comment_submit')) {
             $id_product = Tools::getValue('id_product');
+            $firstname = Tools::getValue('firstname');
+            $lastname = Tools::getValue('lastname');
+            $email = Tools::getValue('email');
             $grade = Tools::getValue('grade');
             $comment = Tools::getValue('comment');
             $comments_to_insert = array(
                 'id_product' => (int)$id_product,
+                'firstname' => pSQL($firstname),
+                'lastname' => pSQL($lastname),
+                'email' => pSQL($email),
                 'grade' => (int)$grade,
                 'comment' => pSQL($comment),
                 'date_add' => date('Y-m-d H:i:s'),
@@ -116,7 +124,11 @@ class MishaComments extends ModuleCore
         $enable_comments = Configuration::get('MISHACOMMENTS_COMMENTS');
 
         $id_product = Tools::getValue('id_product');
-        $retrieve_comments_query = 'SELECT * FROM ' . _DB_PREFIX_ . 'mishacomments_comment WHERE id_product=' . (int)$id_product;
+        $product = new Product((int)$id_product, false, $this->context->cookie->id_lang);
+
+        $retrieve_comments_query = 'SELECT * FROM ' . _DB_PREFIX_ . 'mishacomments_comment 
+                                    WHERE `id_product`=' . (int)$id_product
+                                    . ' ORDER BY `date_add` DESC LIMIT 3';
         $comments = Db::getInstance()->executeS($retrieve_comments_query);
 
         $this->context->controller->addCSS($this->_path.'views/css/bootstrap.min.css', 'all');
@@ -128,7 +140,8 @@ class MishaComments extends ModuleCore
         $this->context->smarty->assign(array(
            'enable_grades' => $enable_grades,
             'enable_comments' => $enable_comments,
-            'comments' => $comments
+            'comments' => $comments,
+            'product' => $product
         ));
     }
 
@@ -137,5 +150,34 @@ class MishaComments extends ModuleCore
         $this->processProductTabContent();
         $this->assignProductTabContent();
         return $this->display(__FILE__, 'displayProductTabContent.tpl');
+    }
+
+    public function hookDisplayBackOfficeHeader($params)
+    {
+        if (Tools::getValue('controller') !== 'AdminModules') {
+            return '';
+        }
+
+        return $this->display(__FILE__, 'displayBackOfficeHeader.tpl');
+    }
+
+    public function hookModuleRoutes()
+    {
+        return array(
+            'module-mishacomments-comments' => array(
+                'controller' => 'comments',
+                'rule' => 'product-comments{/:module_action}{/:product_rewrite}{/:id_product}/page{/:page}',
+                'keywords' => array(
+                    'id_product' => array('regexp' => '[\d]+', 'param' => 'id_product'),
+                    'product_rewrite' => array('regexp' => '[\w-_]+', 'param' => 'product_rewrite'),
+                    'page' => array('regexp' => '[\d]+', 'param' => 'page'),
+                    'module_action' => array('regexp' => '[\w]+', 'param' => 'module_action'),
+                ),
+                'params' => array(
+                    'fc' => 'module',
+                    'module' => 'mishacomments'
+                )
+            ),
+        );
     }
 }
